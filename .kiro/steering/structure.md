@@ -16,6 +16,9 @@ lib/
 ├─ supabase.ts           Supabase 클라이언트 (한 곳에서만 생성)
 └─ mock-data.ts          데모용 가짜 데이터
 types/                   공통 TypeScript 타입
+db/
+├─ be-1/                 BE-1의 SQL · 스키마 메모
+└─ be-2/                 BE-2의 SQL · 스키마 메모
 ```
 
 ## 규칙
@@ -26,3 +29,4 @@ types/                   공통 TypeScript 타입
 - 역할 분담 기준:
   - 화면(`app/**/page.tsx`, `components/`) → 프론트엔드 담당
   - 서버 API(`app/api/`)와 DB(Supabase) → 백엔드 담당
+- 브랜치는 `be-1`, `be-2`, `fe`로 나눠 작업하고 main에는 동작하는 코드만 병합한다. 자세한 규칙은 AGENTS.md.
