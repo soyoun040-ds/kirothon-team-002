@@ -55,6 +55,11 @@ const SECRET_RULES = [
   [/sb_publishable_[A-Za-z0-9_-]+/g, MASK],
   [/sb_secret_[A-Za-z0-9_-]+/g, MASK],
   [/AKIA[0-9A-Z]{16}/g, MASK],
+  // 사용자 홈 폴더 경로의 사용자 이름 (실명 노출 방지). 이름 부분만 "~"로 바꾼다.
+  // C:\Users\이름\ 와 JSON 이스케이프된 C:\\Users\\이름\\ 둘 다 처리한다.
+  [/([A-Za-z]:\\{1,2}Users\\{1,2})[^\\/:*?"<>|\r\n]+(?=\\)/gi, "$1~"],
+  // /Users/이름/ (macOS), /home/이름/ (Linux)
+  [/(\/(?:Users|home)\/)[^/\\\s"']+(?=\/)/g, "$1~"],
 ];
 
 export function maskText(text) {
