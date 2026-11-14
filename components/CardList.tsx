@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { Card } from "@/lib/mock-data";
+import type { CardRow } from "@/lib/services/generate-cards";
 import SourceBadge from "./SourceBadge";
 import ExportModal from "./ExportModal";
 
-export default function CardList({ cards }: { cards: Card[] }) {
+export default function CardList({ cards }: { cards: CardRow[] }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
 

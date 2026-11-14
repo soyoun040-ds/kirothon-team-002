@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { Card } from "@/lib/mock-data";
+import type { CardRow } from "@/lib/services/generate-cards";
 
-type Props = { cards: Card[]; onClose: () => void };
+type Props = { cards: CardRow[]; onClose: () => void };
 type Tab = "readme" | "resume" | "essay";
 
 const tabLabels: Record<Tab, string> = { readme: "README", resume: "이력서", essay: "자소서" };
