@@ -79,13 +79,14 @@ docs/                          발표 자료, 데모 시나리오
 
 | 폴더 | 담당 |
 |---|---|
-| `scripts/hooks/`, `scripts/install.sh`, 이벤트 수신·세션 닫기 route | be-1 |
-| `lib/services/`, 카드·내보내기 route, `seed/` | be-2 |
+| `scripts/hooks/`, `scripts/install.sh`, 이벤트 수신 route, `db/be-1/` | be-1 |
+| `lib/services/`, 세션 닫기·카드·내보내기 route, `seed/`, `db/be-2/` | be-2 |
 | 프론트 화면(`app/**/page.tsx`), `components/`, `lib/mock-data.ts` | fe |
 | `.kiro/steering/`, `.kiro/specs/`, `docs/`, 데모용 저장소 | PM |
 
 - 각자 담당 폴더만 수정하고, 다른 폴더는 담당자에게 요청한다.
-- 공통 이벤트·카드 형식(`types/`)은 변경 시 전원 합의한다.
+- `db/be-1/`은 be-1, `db/be-2/`는 be-2의 SQL 폴더다. 다른 사람 폴더는 수정하지 않는다.
+- 공통 이벤트·카드 형식(`types/`)과 공통 테이블 스키마는 변경 시 전원 합의한다.
 
 ## 브랜치
 

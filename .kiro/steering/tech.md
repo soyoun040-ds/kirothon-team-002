@@ -44,6 +44,30 @@ Python 라이브러리가 꼭 필요하면 서버 로직만 FastAPI(Python)로 �
 - route 파일은 요청을 받아 이 함수를 호출하는 얇은 층으로만 둔다. `POST /api/events` route는 이벤트를 검증해서 저장하는 일만 한다.
 - 이유: 수집 경로(hook)와 무관하게 다른 입구(웹의 "지금 정리하기" 버튼, 나중에 추가할 MCP)에서도 같은 함수를 재사용하기 위해서다.
 
+### 서비스 함수 형태 (고정)
+
+```ts
+closeSession(
+  sessionId: string,
+  reason: 'task_done' | 'session_end' | 'manual' | 'idle'
+): Promise<{ cardIds: string[]; skipped: boolean }>
+
+generateCards(sessionId: string): Promise<Card[]>
+```
+
+- 이미 닫힌 세션이면 카드를 다시 만들지 않고 `skipped: true`를 반환한다. (중복 방지)
+- `generateCards`는 `closeSession` 안에서 호출한다.
+- 호출 위치:
+
+| 호출하는 곳 | 담당 | reason |
+|---|---|---|
+| 이벤트 route: kiro 태스크 완료 이벤트 | be-1 | `task_done` |
+| 이벤트 route: claude-code, cursor 세션 종료 이벤트 | be-1 | `session_end` |
+| 세션 닫기 route: 웹 "지금 정리하기" 버튼 | be-2 | `manual` |
+| 20분 무입력 (선택 구현) | be-1 또는 be-2 | `idle` |
+
+- 이 형태를 바꾸려면 be-1, be-2 합의가 필요하다.
+
 ### 이벤트 형식
 
 - 모든 이벤트는 `source`(`kiro`, `claude-code`, `cursor`)와 `project_name`을 포함한다.
