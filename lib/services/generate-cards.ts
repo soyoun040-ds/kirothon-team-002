@@ -1,3 +1,5 @@
+import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 import { supabase } from "@/lib/supabase";
 import type { EventRow, SessionRow } from "@/types/event";
 
@@ -83,12 +85,52 @@ JSON만 출력한다. 형식:
 ${log}`;
 }
 
-// LLM 호출. 응답 텍스트(JSON 문자열)를 돌려준다.
-// TODO: LLM 미정(tech.md). 정해지면 이 함수만 채운다. 키는 .env.local에 두고 서버에서만 읽는다.
-// 내보내기(자소서 초안)에서도 같은 함수를 쓴다.
-export async function callLlm(prompt: string): Promise<string> {
-  void prompt;
-  throw new Error("LLM이 아직 정해지지 않았습니다. lib/services/generate-cards.ts의 callLlm을 채워 주세요.");
+// LLM 호출: Kiro CLI를 실행해 stdout 전체를 돌려준다. 내보내기(자소서 초안)에서도 같은 함수를 쓴다.
+// - 프롬프트는 stdin으로 넘긴다(Windows 명령줄 길이 제한).
+// - cwd는 프로젝트 밖(임시 폴더). 프로젝트의 Kiro hook이 돌지 않게 한다.
+// - 모델: KIRO_MODEL (기본 claude-sonnet-5.5), 실행 파일: KIRO_CLI_PATH (기본 kiro-cli)
+const LLM_TIMEOUT_MS = 90_000;
+
+export function callLlm(prompt: string): Promise<string> {
+  const bin = process.env.KIRO_CLI_PATH || "kiro-cli";
+  const model = process.env.KIRO_MODEL || "claude-sonnet-5.5";
+  const args = ["chat", "--no-interactive", "--trust-tools=", "--model", model];
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin, args, { cwd: tmpdir(), windowsHide: true });
+    let stdout = "";
+    let stderr = "";
+    let done = false;
+
+    const finish = (err: Error | null) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (err) reject(err);
+      else resolve(stdout);
+    };
+
+    const timer = setTimeout(() => {
+      child.kill();
+      finish(new Error(`Kiro CLI가 ${LLM_TIMEOUT_MS / 1000}초 안에 끝나지 않았습니다.`));
+    }, LLM_TIMEOUT_MS);
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => (stdout += chunk));
+    child.stderr.on("data", (chunk: string) => (stderr += chunk));
+
+    // 실행 파일을 찾지 못한 경우 등
+    child.on("error", (e) => finish(new Error(`Kiro CLI 실행 실패(${bin}): ${e.message}`)));
+    child.on("close", (code) => {
+      if (code === 0) finish(null);
+      else finish(new Error(`Kiro CLI 종료 코드 ${code}: ${stderr.trim().slice(-500) || "(stderr 없음)"}`));
+    });
+
+    // stdin이 먼저 닫혀도(EPIPE) 서버가 죽지 않게 한다. 결과는 close에서 판단한다.
+    child.stdin.on("error", () => {});
+    child.stdin.end(prompt, "utf8");
+  });
 }
 
 type CardDraft = Pick<CardRow, "title" | StarField | "needs_check" | "evidence_event_ids">;
