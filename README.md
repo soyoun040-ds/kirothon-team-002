@@ -1,6 +1,6 @@
 # RE:Spec — 바이브코딩한 과정을 그대로 포트폴리오로
 
-Kiro로 개발하는 동안 겪은 문제와 해결 과정을 자동으로 모아 STAR 트러블슈팅 카드로 정리하고, README·이력서·자소서 초안으로 내보내는 서비스입니다. (KIROTHON 2026)
+Kiro로 개발하는 동안 겪은 문제와 해결 과정을 자동으로 모아 STAR 트러블슈팅 카드로 정리하고, README·이력서·자소서 초안과 프로젝트 전체 보고서로 내보내는 서비스입니다. (KIROTHON 2026)
 
 ## 데모 영상
 
@@ -14,10 +14,21 @@ Kiro로 개발하는 동안 겪은 문제와 해결 과정을 자동으로 모�
 
 ## 해결: 동작 흐름
 
-1. **자동 수집**: Kiro hook이 프롬프트, 셸 실행 결과(테스트 실패와 통과 포함), spec 태스크 시작·완료를 서버로 보냅니다. 따로 기록할 필요가 없습니다.
-2. **세션 닫힘**: spec 태스크가 끝나면 그동안 쌓인 이벤트가 한 세션으로 닫힙니다. spec 없이 작업했다면 웹 화면의 "지금 정리하기" 버튼을 누릅니다.
+1. **자동 수집**: Kiro hook이 프롬프트, 셸 실행 결과(테스트 실패와 통과 포함), 서브에이전트 요청과 보고, 수정한 파일 경로, spec 태스크 시작·완료를 서버로 보냅니다. 따로 기록할 필요가 없습니다. hook을 설치할 때 저장소의 프로젝트 설명(README, `product.md`, `package.json`)도 한 번 보냅니다.
+2. **세션 닫힘**: spec 태스크가 끝나면 그동안 쌓인 이벤트가 한 세션으로 닫힙니다. spec 없이 작업했다면 웹 화면(`/cards`)의 "지금 정리하기" 버튼을 누릅니다.
 3. **STAR 카드 생성**: 세션의 로그를 LLM에 보내 트러블슈팅을 상황·과제·행동·결과 카드로 만듭니다. 세션당 0~3개입니다.
-4. **포트폴리오 내보내기**: 카드를 골라 GitHub README 트러블슈팅 섹션, 이력서 한 줄, 자소서 초안(문항과 글자 수 입력)으로 바꿔 복사합니다.
+4. **포트폴리오 내보내기**: 카드를 골라 GitHub README 트러블슈팅 섹션, 이력서 한 줄(AI가 카드마다 한 문장으로 다듬음), 자소서 초안(문항과 글자 수 입력)으로 바꿔 복사합니다.
+
+프로젝트 단위로도 볼 수 있습니다. 메인 화면에서 프로젝트 폴더를 누르면 "이 프로젝트는 / 내가 한 일 / 겪은 어려움 / 어떻게 해결했나" 4단 보고서가 열리고, 수집된 기록을 AI가 다듬은 문장으로 보여 줍니다. "PDF로 저장" 버튼은 브라우저 인쇄를 씁니다.
+
+### 화면
+
+| 경로 | 내용 |
+|---|---|
+| `/` | 내 프로젝트 목록 (프로젝트별 폴더, 카드 수와 기록 수) |
+| `/projects/[name]` | 프로젝트 전체 보고서 |
+| `/cards` | 트러블슈팅 카드 목록(출처 배지), "지금 정리하기", 카드를 골라 내보내기 |
+| `/cards/[id]` | 카드 상세, "확인 필요" 칸 입력 |
 
 ## 구조
 
@@ -31,8 +42,11 @@ flowchart LR
     W[웹 '지금 정리하기'<br/>POST /api/sessions/close] --> F
     F --> G[generateCards<br/>Kiro CLI headless]
     G --> H[(Supabase cards)]
-    H --> I[웹 화면<br/>목록, 상세]
+    H --> I[웹 화면<br/>프로젝트, 카드 목록, 상세]
     I --> J[내보내기<br/>README, 이력서, 자소서]
+    E --> K[프로젝트 보고서<br/>GET·POST /api/projects/name/report]
+    H --> K
+    K --> I
 ```
 
 ## Kiro 활용
@@ -51,11 +65,11 @@ flowchart LR
 
 ### 제품 안
 
-- **Kiro hook으로 개발 과정 수집**: `UserPromptSubmit`, `PostToolUse`, `PreTaskExec`, `PostTaskExec`, `Stop` hook이 Kiro가 넘기는 입력을 공통 이벤트 형식으로 바꿔 보냅니다.
+- **Kiro hook으로 개발 과정 수집**: `UserPromptSubmit`, `PostToolUse`, `PreTaskExec`, `PostTaskExec`, `Stop` hook이 Kiro가 넘기는 입력을 공통 이벤트 형식으로 바꿔 보냅니다. (`PostToolUse`는 셸 실행, 서브에이전트, 파일 수정 도구에만 걸려 있습니다.)
   - [hooks.json](scripts/hooks/adapters/kiro/hooks.json): 설치되는 hook 설정
   - [adapter.mjs](scripts/hooks/adapters/kiro/adapter.mjs): hook 입력을 이벤트로 변환
   - [NOTES.md](scripts/hooks/adapters/kiro/NOTES.md): Kiro에서 직접 확인한 hook 입력 형식
-- **Kiro CLI headless 모드로 카드 생성**: `kiro-cli chat --no-interactive`를 서버에서 실행하고 프롬프트를 표준입력으로 넘겨 카드를 받습니다. 자소서 초안도 같은 함수로 만듭니다.
+- **Kiro CLI headless 모드로 카드 생성**: `kiro-cli chat --no-interactive`를 서버에서 실행하고 프롬프트를 표준입력으로 넘겨 카드를 받습니다. 이력서 한 줄, 자소서 초안, 프로젝트 보고서 문장도 같은 함수로 만듭니다.
   - [generate-cards.ts](lib/services/generate-cards.ts)의 `callLlm`
 
 ## 제품 원칙
@@ -83,7 +97,7 @@ flowchart LR
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 주소 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 공개 키 |
 | `KIRO_CLI_PATH` (선택) | kiro-cli 실행 파일 경로. 기본은 `kiro-cli` |
-| `KIRO_MODEL` (선택) | 카드 생성에 쓸 모델. 기본값은 코드에 있음 |
+| `KIRO_MODEL` (선택) | Kiro CLI가 쓸 모델. 기본값은 코드에 있음 |
 | `LLM_PROVIDER`, `GEMINI_API_KEY` | Gemini 대비책용 이름. **현재 코드는 Kiro CLI만 호출합니다.** |
 
 ### 2. DB
@@ -100,7 +114,7 @@ npm install
 npm run dev
 ```
 
-http://localhost:3000 에서 확인합니다.
+http://localhost:3000 에서 확인합니다. 처음에는 수집된 프로젝트가 없어 목록이 비어 있습니다.
 
 ### 4. 대상 저장소에 hook 설치
 
@@ -113,9 +127,11 @@ bash <이 저장소 경로>/scripts/install.sh
 
 서버 주소(기본 `http://localhost:3000`)와 프로젝트 이름을 물어봅니다. 스크립트가 복사하는 것은 다음과 같습니다.
 
-- `scripts/hooks/send-event.mjs`, `scripts/hooks/adapters/kiro/`
+- `scripts/hooks/send-event.mjs`, `scripts/hooks/send-project-info.mjs`, `scripts/hooks/adapters/kiro/`
 - `.kiro/hooks/cv-agent.json`
 - `.cvagent/config.json` (`.gitignore`에도 추가됩니다)
+
+설치가 끝나면 `send-project-info.mjs`를 한 번 실행해 저장소의 `README.md`, `.kiro/steering/product.md`, `package.json` 설명을 서버로 보냅니다. 프로젝트 보고서의 "이 프로젝트는" 부분에 쓰이고, 서버가 꺼져 있어도 설치는 끝납니다. 대상 저장소에서 `node scripts/hooks/send-project-info.mjs`를 다시 실행하면 최신 내용으로 갱신됩니다.
 
 코드와 설정의 `cv-agent`, `.cvagent` 이름은 초기 가칭(CV 에이전트)에서 온 것입니다.
 
@@ -141,7 +157,8 @@ npm install
 2. spec 태스크 하나를 실행합니다. 테스트가 실패했다가 수정되어 통과합니다.
 3. 태스크가 끝나면 세션이 닫히고 카드가 만들어집니다. 자동 경로가 안 되면 "지금 정리하기"를 누릅니다.
 4. 웹 화면에서 카드를 확인하고, "확인 필요" 칸을 채웁니다.
-5. 내보내기에서 README 섹션과 자소서 초안을 만듭니다.
+5. `/cards`에서 카드를 골라 내보내기로 README 섹션과 자소서 초안을 만듭니다.
+6. 메인 화면의 프로젝트 폴더를 열어 프로젝트 전체 보고서를 확인합니다.
 
 Kiro IDE 없이 서버와 카드 생성만 확인하려면, `npm run dev`를 켠 상태에서 테스트 이벤트를 보냅니다. 실제 파이프라인(저장, 세션 닫기, 카드 생성)을 그대로 탑니다.
 
