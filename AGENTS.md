@@ -19,10 +19,11 @@
 - 비밀 키(API key, Supabase key)는 `.env.local`에만 두고 코드에 직접 쓰지 말 것.
 - 팀원 대부분이 초보이므로, 변경 내용을 짧고 쉬운 한국어로 요약할 것.
 
-## Git 규칙 (팀 4명: BE 2, FE 1 + 1)
+## Git 규칙 (팀 4명: BE 2, FE 1, PM 1)
 
 - 브랜치: `main`(항상 돌아가는 상태만), `be-1`, `be-2`, `fe`. **각자 자기 브랜치에서만 작업**한다. main에 직접 작업하지 않는다.
-- 현재 브랜치를 먼저 확인할 것(`git branch --show-current`). 자기 브랜치가 아니면 작업을 멈추고 알려 줄 것.
+  - 예외: `.kiro/steering/` 문서는 PM이 main에 직접 커밋한다. 그 외 모든 코드와 문서는 각자 브랜치에서 작업한다.
+- 현재 브랜치를 먼저 확인할 것(`git branch --show-current`). 자기 브랜치가 아니면 작업을 멈추고 알려 줄 것. 단, steering 문서 수정은 main에서 한다.
 - 작업 시작 전: `git pull origin main` 후 `git merge main`으로 최신 main을 자기 브랜치에 합친다.
 - 기능 하나가 끝나고 `npm run build`가 통과하면 commit → `git push origin <자기 브랜치>`.
 - main 병합은 build 통과를 확인한 뒤에만 하고, 병합 직후 `git push origin main`.
@@ -37,6 +38,7 @@
 - `db/be-1/`, `db/be-2/`: BE 각자의 SQL·스키마 메모. 다른 사람 폴더는 수정하지 않는다.
 - `app/api/<기능명>/`: 기능 폴더 하나는 한 사람이 담당한다. 시작 전에 담당자를 정한다.
 - 화면(`app/**/page.tsx`, `components/`)은 FE 담당.
+- PM: `.kiro/steering/`, `docs/`, 데모용 저장소. steering 문서는 PM만 수정한다.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
