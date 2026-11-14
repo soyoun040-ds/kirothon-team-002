@@ -110,7 +110,10 @@ export default function ProjectReportView({ name }: { name: string }) {
             {report.overview.requirements}
           </pre>
         ) : (
-          <p className="text-zinc-500">spec 요구사항 기록이 없습니다. (spec 태스크를 실행하면 채워집니다)</p>
+          <p className="text-zinc-500">
+            아직 spec 태스크 기록이 없습니다. 이 저장소에서 Kiro spec 태스크를 실행하면 요구사항이 자동으로 채워집니다.
+            지금까지의 기록으로 개요를 보려면 위의 &quot;AI로 문장 다듬기&quot;를 누르세요.
+          </p>
         )}
       </Section>
 
@@ -119,6 +122,9 @@ export default function ProjectReportView({ name }: { name: string }) {
         <p className="text-zinc-600">
           지시 {c.prompts}건 · 명령 실행 {c.shells}번(실패 {c.failed_shells}번) · 수정한 파일 {c.files}개
         </p>
+        {report.my_work.tasks.length === 0 && (
+          <p className="text-zinc-500">완료한 spec 작업: 아직 없음 (spec 태스크가 끝나면 여기에 쌓입니다)</p>
+        )}
         {report.my_work.tasks.length > 0 && (
           <div>
             <div className="font-medium">완료한 작업</div>
@@ -151,7 +157,11 @@ export default function ProjectReportView({ name }: { name: string }) {
 
       <Section no={3} title="겪은 어려움">
         <AiText text={summary?.difficulties} />
-        {report.troubles.length === 0 && <p className="text-zinc-500">정리된 트러블 카드가 아직 없습니다.</p>}
+        {report.troubles.length === 0 && (
+          <p className="text-zinc-500">
+            정리된 트러블 카드가 아직 없습니다. 작업 중 실패했다가 해결한 흐름이 있으면, 태스크가 끝날 때 카드가 자동으로 만들어집니다.
+          </p>
+        )}
         {report.troubles.map((t, i) => (
           <div key={t.id} className="rounded border border-zinc-200 p-3">
             <Link href={`/cards/${t.id}`} className="font-medium underline-offset-2 hover:underline">
@@ -165,6 +175,9 @@ export default function ProjectReportView({ name }: { name: string }) {
 
       <Section no={4} title="어떻게 해결했나">
         <AiText text={summary?.solutions} />
+        {report.solutions.length === 0 && (
+          <p className="text-zinc-500">아직 해결 기록이 없습니다. 트러블 카드가 생기면 해결 방법과 결과가 여기에 정리됩니다.</p>
+        )}
         {report.solutions.map((s, i) => (
           <div key={s.id} className="rounded border border-zinc-200 p-3">
             <div className="font-medium">
