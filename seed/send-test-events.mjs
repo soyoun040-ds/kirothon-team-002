@@ -26,7 +26,11 @@ AssertionError: expected '2026-11-13' to be '2026-11-14'
 
 const events = [
   { type: "task_start", payload: { spec_path: ".kiro/specs/todo/tasks.md", task_name: "2. 마감일 표시" } },
-  { type: "shell", payload: { command: "npx vitest run", exit_code: 1, output: failOutput } },
+  // 에이전트가 파이프로 실행하면 테스트가 실패해도 exit_code가 0이다. 어댑터는 looks_failed로 실패를 표시한다.
+  {
+    type: "shell",
+    payload: { command: "npx vitest run 2>&1 | Select-Object -Last 30", exit_code: 0, looks_failed: true, output: failOutput },
+  },
   { type: "file_change", payload: { path: "src/date.ts" } },
   {
     type: "subagent",
@@ -35,7 +39,10 @@ const events = [
       report: "toISOString().slice(0,10)이 UTC 날짜를 돌려줘서 한국 시간 자정~09시 사이 날짜가 하루 밀렸습니다. Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' })로 바꿨습니다.",
     },
   },
-  { type: "shell", payload: { command: "npx vitest run", exit_code: 0, output: " Test Files  1 passed (1)\n      Tests  4 passed (4)" } },
+  {
+    type: "shell",
+    payload: { command: "npx vitest run", exit_code: 0, looks_failed: false, output: " Test Files  1 passed (1)\n      Tests  4 passed (4)" },
+  },
 ];
 if (!manual) {
   events.push({

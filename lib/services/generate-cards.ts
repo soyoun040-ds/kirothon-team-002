@@ -8,24 +8,9 @@ import type { EventRow, SessionRow } from "@/types/event";
 // 카드 생성: 세션의 이벤트(프롬프트, 셸 결과, spec, diff)를 한 번에 LLM에 보내
 // 트러블슈팅을 STAR 카드로 만든다(세션당 0~3개). 수집 경로와 무관하게 다른 입구(MCP 등)에서도 쓴다.
 
-// TODO: 팀 합의 후 types/card.ts로 옮긴다.
-export type StarField = "situation" | "task" | "action" | "result";
-
-export type CardRow = {
-  id: string;
-  session_id: string;
-  source: string;
-  project_name: string;
-  title: string;
-  situation: string;
-  task: string;
-  action: string;
-  result: string;
-  needs_check: StarField[];
-  evidence_event_ids: number[];
-  created_at: string;
-  updated_at: string;
-};
+// 카드 형식은 types/card.ts에 있다. 예전 import 경로(이 파일)도 계속 쓸 수 있게 다시 내보낸다.
+import type { CardRow, StarField } from "@/types/card";
+export type { CardRow, StarField };
 
 export const NEEDS_CHECK = "확인 필요";
 const MAX_CARDS = 3;
@@ -52,7 +37,11 @@ function describeEvent(e: EventRow): string | null {
     case "prompt":
       return `${head} 사용자 프롬프트:\n${cut(p.text)}`;
     case "shell":
-      return `${head} 셸 명령: ${cut(p.command, 300)} (exit_code: ${p.exit_code ?? "?"})\n${cutTail(p.output)}`;
+    {
+      const failed = shellFailed(e);
+      const state = failed === null ? "판단 불가" : failed ? "실패" : "성공";
+      return `${head} 셸 명령: ${cut(p.command, 300)} (exit_code: ${p.exit_code ?? "?"}, 결과: ${state})\n${cutTail(p.output)}`;
+    }
     case "task_start":
       return `${head} spec 태스크 시작: ${cut(p.task_name, 300)}`;
     case "task_complete":
@@ -70,18 +59,31 @@ function describeEvent(e: EventRow): string | null {
   }
 }
 
-// 셸이 실패(exit_code ≠ 0)한 뒤 같은 명령이 성공(0)한 짝을 찾는다. 트러블슈팅 우선 후보.
+// 셸 실패 여부. 어댑터가 붙인 looks_failed를 쓴다(파이프 실행이면 테스트가 실패해도 exit_code가 0일 수 있다).
+// looks_failed가 없는 이벤트(예전 이벤트, 다른 도구)는 exit_code로 판단한다. 판단할 수 없으면 null.
+function shellFailed(e: EventRow): boolean | null {
+  const { looks_failed, exit_code } = e.payload;
+  if (typeof looks_failed === "boolean") return looks_failed;
+  if (typeof exit_code === "number") return exit_code !== 0;
+  return null;
+}
+
+// 같은 명령인지 비교할 때 파이프 뒤(| Select-Object -Last 30 등)와 2>&1은 뺀다.
+function baseCommand(e: EventRow): string {
+  return String(e.payload.command).split("|")[0].replace(/\s*2>&1\s*/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// 셸이 실패한 뒤 같은 명령이 성공한 짝을 찾는다. 트러블슈팅 우선 후보.
 // events는 시간순이어야 한다.
 function findFailThenSuccess(events: EventRow[]): string[] {
   const shells = events.filter((e) => e.type === "shell" && typeof e.payload.command === "string");
-  const cmd = (e: EventRow) => String(e.payload.command).trim();
+  const cmd = baseCommand;
   const pairs: string[] = [];
   const used = new Set<number>();
   for (let i = 0; i < shells.length; i++) {
     const failed = shells[i];
-    const code = failed.payload.exit_code;
-    if (typeof code !== "number" || code === 0 || used.has(failed.id)) continue;
-    const fixed = shells.slice(i + 1).find((s) => s.payload.exit_code === 0 && cmd(s) === cmd(failed));
+    if (shellFailed(failed) !== true || used.has(failed.id)) continue;
+    const fixed = shells.slice(i + 1).find((s) => shellFailed(s) === false && cmd(s) === cmd(failed));
     if (!fixed) continue;
     // 같은 명령이 여러 번 실패했으면 성공 직전까지의 실패를 한 짝으로 묶는다.
     shells.slice(i, shells.indexOf(fixed)).forEach((s) => cmd(s) === cmd(failed) && used.add(s.id));
@@ -103,8 +105,10 @@ function buildPrompt(events: EventRow[]): string {
 규칙:
 - 셸 명령이 실패했다가 수정 후 성공한 흐름을 가장 먼저 트러블슈팅으로 본다. 아래 "우선 후보"가 있으면 먼저 검토한다.
 - 사용자 프롬프트가 없어도 셸 결과(실패 메시지와 성공), 변경한 파일, spec 내용만으로 카드를 만들 수 있다.
+- 도구나 서브에이전트, AI를 언급하지 말고 내가 한 일로 쓴다. ("서브에이전트 보고에 따르면", "Kiro가 수정했다" 같은 표현 금지. "원인을 찾아 ~로 바꿨다"처럼 쓴다)
 - 로그에 근거가 있는 내용만 쓴다. 지어내지 않는다.
-- 근거가 없는 칸, 특히 수치와 결과는 정확히 "${NEEDS_CHECK}"라고만 쓰고 needs_check에 그 칸 이름을 넣는다.
+- 셸 출력에 나온 사실은 결과의 근거로 쓴다. 예: 테스트 통과 수("Tests 4 passed"), 빌드 성공, exit_code 0, 사라진 에러 메시지. 출력에 있는 숫자는 그대로 옮긴다.
+- 로그에 없는 결과(성능 향상 %, 사용자 반응, 시간 단축 등)는 정확히 "${NEEDS_CHECK}"라고만 쓰고 needs_check에 그 칸 이름을 넣는다.
 - 오타, import 누락, 단순 설정 변경 같은 사소한 수정은 카드로 만들지 않는다.
 - 트러블슈팅이 없으면 cards를 빈 배열로 둔다.
 - evidence_event_ids에는 근거가 된 로그 번호(#뒤 숫자)를 넣는다.

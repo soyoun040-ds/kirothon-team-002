@@ -37,6 +37,7 @@
 | `execute_pwsh` (Windows 셸) | `command`, `description` | 문자열 `Output:\n<출력>\n\nExit Code: N` | 명령, 종료 코드(`Exit Code: (\d+)`), 출력 끝부분 |
 | `invoke_sub_agent` | `name`, `prompt`, `specTask` | 서브에이전트 보고문(문자열) | 요청과 보고문 |
 | `fs_write` | `path`, `text` | `Created the ... file.` | **경로만** (내용 저장 금지) |
+| `str_replace` | `path`, `oldStr`, `newStr` | | **경로만**. 실제 태스크에서 서브에이전트는 이 도구로 파일을 고쳤다 |
 | `task_update` | `taskId`, `status`, `error` | JSON 문자열 | 상태와 error |
 | `read_file`, `list_directory`, `task_get`, `task_list` | | | **저장하지 않음** (읽기, 크기 큼) |
 
@@ -53,10 +54,15 @@
 - 어떤 경우에도 **정상 종료(exit 0)**, 서버가 꺼져 있어도 무시, 전송 제한 시간 5초 이하. 에이전트 작업을 막지 않는다.
 - 마스킹은 `send-event.mjs`에서만 한다.
 
+## 실제 태스크에서 추가로 확인한 것 (2026-11-14 오후)
+
+- 셸 명령이 실패하면 `Exit Code: 1`과 오류 출력이 그대로 온다.
+- 에이전트가 `npm test 2>&1 | Select-Object -Last 30`처럼 **파이프로 실행하면 종료 코드는 마지막 명령의 것(0)**이 된다. 테스트가 실패해도 0이 될 수 있으므로, 어댑터는 출력의 실패 흔적("2 failed", `FAIL`, `×` 등)을 보고 `looks_failed`를 따로 붙인다. `exit_code`는 받은 그대로 둔다.
+- 에이전트가 테스트를 **먼저 실행하지 않고 바로 고칠 수 있다.** 그러면 "실패" 이벤트가 아예 없다. 데모에서는 태스크 설명이나 채팅으로 "먼저 테스트를 실행해 실패를 확인하라"고 해야 한다.
+- 서브에이전트는 파일을 `str_replace`로 고쳤다.
+
 ## 아직 확인하지 못한 것
 
-- 셸 명령이 **실패했을 때**의 `tool_response` 형식 (종료 코드가 0이 아닐 때)
 - Mac의 셸 도구 이름 (`execute_bash`로 추정)
-- `str_replace` 등 `fs_write` 외 파일 수정 도구의 이름
 - 태스크가 실패했을 때 `task_success: false`와 `task_update.error`의 내용
 - claude-code, cursor hook의 입력 형식 (구현 전에 `scripts/hooks/probe/`로 직접 찍어서 확인)

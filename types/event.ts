@@ -13,7 +13,8 @@ export type EventType =
   | "subagent" // invoke_sub_agent의 요청과 보고문
   | "file_change" // 파일 변경 (경로만)
   | "commit" // git 커밋 (메시지 + diff)
-  | "session_end"; // claude-code / cursor의 세션 종료 hook
+  | "session_end" // claude-code / cursor의 세션 종료 hook
+  | "project_info"; // 프로젝트 설명 (README, product.md, package.json). 설치 때 보낸다. 세션·카드와 무관
 
 export type CvEvent = {
   source: EventSource;

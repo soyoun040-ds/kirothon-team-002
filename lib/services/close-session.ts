@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { EventRow, SessionRow } from "@/types/event";
-import { generateCards, type CardRow } from "@/lib/services/generate-cards";
+import type { CardRow } from "@/types/card";
+import { generateCards } from "@/lib/services/generate-cards";
 
 // 세션 닫기: 열린 세션을 닫고 카드 생성을 실행한다.
 // 호출하는 곳: spec 태스크 완료, "지금 정리하기" 버튼, 세션 종료 hook, (나중에) MCP.

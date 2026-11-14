@@ -1,6 +1,7 @@
 import { NextResponse, connection } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { NEEDS_CHECK, type StarField } from "@/lib/services/generate-cards";
+import type { StarField } from "@/types/card";
+import { NEEDS_CHECK } from "@/lib/services/generate-cards";
 
 // GET /api/cards/:id   카드 상세 + 근거 이벤트(원본 로그)
 // PATCH /api/cards/:id 사용자가 "확인 필요" 칸을 채운다. 본문: { title?, situation?, task?, action?, result? }
