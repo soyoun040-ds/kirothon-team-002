@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { closeSession } from "@/lib/services/close-session";
 import type { EventSource, EventType } from "@/types/event";
 
 // POST /api/events: 모든 도구의 공통 입구. 검증하고 저장만 한다.
@@ -114,6 +115,13 @@ export async function POST(request: Request) {
       .select("id")
       .single();
     if (error) throw new Error(error.message);
+
+    // spec 태스크 완료면 응답을 보낸 뒤에 세션을 닫는다. 실패해도 저장 응답(201)은 그대로.
+    if (type === "task_complete") {
+      after(() =>
+        closeSession(sessionId, "task_done").catch((e) => console.error("세션 닫기 실패:", e)),
+      );
+    }
 
     return NextResponse.json(
       { data: { id: data.id, session_id: sessionId, collected_at: collectedAt } },
