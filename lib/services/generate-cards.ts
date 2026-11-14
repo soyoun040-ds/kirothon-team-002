@@ -8,24 +8,9 @@ import type { EventRow, SessionRow } from "@/types/event";
 // 카드 생성: 세션의 이벤트(프롬프트, 셸 결과, spec, diff)를 한 번에 LLM에 보내
 // 트러블슈팅을 STAR 카드로 만든다(세션당 0~3개). 수집 경로와 무관하게 다른 입구(MCP 등)에서도 쓴다.
 
-// TODO: 팀 합의 후 types/card.ts로 옮긴다.
-export type StarField = "situation" | "task" | "action" | "result";
-
-export type CardRow = {
-  id: string;
-  session_id: string;
-  source: string;
-  project_name: string;
-  title: string;
-  situation: string;
-  task: string;
-  action: string;
-  result: string;
-  needs_check: StarField[];
-  evidence_event_ids: number[];
-  created_at: string;
-  updated_at: string;
-};
+// 카드 형식은 types/card.ts에 있다. 예전 import 경로(이 파일)도 계속 쓸 수 있게 다시 내보낸다.
+import type { CardRow, StarField } from "@/types/card";
+export type { CardRow, StarField };
 
 export const NEEDS_CHECK = "확인 필요";
 const MAX_CARDS = 3;

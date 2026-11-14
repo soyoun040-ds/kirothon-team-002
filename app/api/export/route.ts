@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { NEEDS_CHECK, callLlm, type CardRow } from "@/lib/services/generate-cards";
+import type { CardRow } from "@/types/card";
+import { NEEDS_CHECK, callLlm } from "@/lib/services/generate-cards";
 
 // POST /api/export: 선택한 카드를 README 트러블슈팅 섹션 / 이력서 한 줄 / 자소서 초안으로 바꾼다.
 // 본문: { card_ids: string[], question?: string, char_limit?: number }
