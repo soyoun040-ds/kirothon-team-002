@@ -85,7 +85,8 @@ ${log}`;
 
 // LLM 호출. 응답 텍스트(JSON 문자열)를 돌려준다.
 // TODO: LLM 미정(tech.md). 정해지면 이 함수만 채운다. 키는 .env.local에 두고 서버에서만 읽는다.
-async function callLlm(prompt: string): Promise<string> {
+// 내보내기(자소서 초안)에서도 같은 함수를 쓴다.
+export async function callLlm(prompt: string): Promise<string> {
   void prompt;
   throw new Error("LLM이 아직 정해지지 않았습니다. lib/services/generate-cards.ts의 callLlm을 채워 주세요.");
 }
