@@ -105,8 +105,9 @@ function summaryPrompt(report: Awaited<ReturnType<typeof buildReport>>) {
 
 규칙:
 - 기록에 없는 사실, 특히 수치·성과·사용자 반응은 지어내지 않는다. 모르면 쓰지 않는다.
-- "나는"을 주어로, 내가 한 일로 쓴다. AI 도구, 에이전트, 서브에이전트, hook을 언급하지 않는다.
-- 각 문단은 2~4문장. 마크다운, 목록, 제목 없이 문장으로만 쓴다.
+- overview는 README·제품 설명·spec 요구사항을 바탕으로 "무엇을, 누구를 위해, 왜 만드는지"를 처음 보는 사람이 이해하게 2~3문장으로 쓴다. 원문을 복사하지 말고 다시 쓴다. 파일 이름, 명령어, 마크다운 기호는 넣지 않는다.
+- 나머지 문단은 "나는"을 주어로, 내가 한 일로 쓴다. AI 도구, 에이전트, 서브에이전트, hook을 언급하지 않는다.
+- 각 문단은 2~3문장, 한 문장은 짧게. 마크다운, 목록, 제목 없이 문장으로만 쓴다.
 - 반드시 아래 JSON 하나만 출력한다. 다른 말은 쓰지 않는다.
 {"overview":"이 프로젝트가 무엇인지","my_work":"내가 맡아 한 일","difficulties":"겪은 어려움(여러 개면 묶어서)","solutions":"어떻게 해결했고 무엇이 확인됐는지"}
 
@@ -132,6 +133,25 @@ ${JSON.stringify(
 )}`;
 }
 
+// AI 문단 캐시: 같은 기록이면 다시 만들지 않는다. (서버 메모리. 새 기록·카드가 생기면 키가 바뀐다)
+type Summary = { overview: string; my_work: string; difficulties: string; solutions: string };
+const summaryCache = new Map<string, Summary>();
+const inFlight = new Map<string, Promise<Summary>>();
+
+async function makeSummary(report: Awaited<ReturnType<typeof buildReport>>): Promise<Summary> {
+  const text = await callLlm(summaryPrompt(report));
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end < start) throw new Error("AI 응답에서 JSON을 찾지 못했습니다.");
+  const parsed = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+  return {
+    overview: str(parsed.overview),
+    my_work: str(parsed.my_work),
+    difficulties: str(parsed.difficulties),
+    solutions: str(parsed.solutions),
+  };
+}
+
 export async function POST(_request: Request, ctx: RouteContext<"/api/projects/[name]/report">) {
   await connection();
   const { name } = await ctx.params;
@@ -141,18 +161,20 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/projects/[
     if (report.counts.events === 0 && !Object.values(report.overview.description).some(Boolean)) {
       return NextResponse.json({ error: `'${project}' 프로젝트의 기록이 없습니다.` }, { status: 404 });
     }
-    const text = await callLlm(summaryPrompt(report));
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start < 0 || end < start) throw new Error("AI 응답에서 JSON을 찾지 못했습니다.");
-    const parsed = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
-    const summary = {
-      overview: str(parsed.overview),
-      my_work: str(parsed.my_work),
-      difficulties: str(parsed.difficulties),
-      solutions: str(parsed.solutions),
-    };
-    return NextResponse.json({ data: summary });
+    const d = report.overview.description;
+    const key = [project, report.counts.events, report.counts.cards, report.period.end, d.product.length, d.readme.length].join("|");
+    const cached = summaryCache.get(key);
+    if (cached) return NextResponse.json({ data: cached, cached: true });
+
+    // 같은 기록으로 동시에 여러 번 요청이 와도 LLM은 한 번만 부른다.
+    let job = inFlight.get(key);
+    if (!job) {
+      job = makeSummary(report).finally(() => inFlight.delete(key));
+      inFlight.set(key, job);
+    }
+    const summary = await job;
+    summaryCache.set(key, summary);
+    return NextResponse.json({ data: summary, cached: false });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "AI 문장 생성 실패" }, { status: 500 });
   }
