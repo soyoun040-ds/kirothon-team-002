@@ -12,7 +12,7 @@
       "name": "cv-agent-tool",
       "description": "셸 실행, 서브에이전트, 파일 변경을 CV 에이전트로 전송",
       "trigger": "PostToolUse",
-      "matcher": "execute_pwsh|execute_bash|invoke_sub_agent|fs_write",
+      "matcher": "execute_pwsh|execute_bash|invoke_sub_agent|fs_write|str_replace|fs_append",
       "action": { "type": "command", "command": "node scripts/hooks/adapters/kiro/adapter.mjs" },
       "timeout": 10
     },

@@ -13,6 +13,22 @@ async function readStdin() {
 }
 
 const SHELL_TOOLS = new Set(["execute_pwsh", "execute_bash"]);
+// 파일 수정 도구. 2026-11-14 실제 태스크에서 서브에이전트가 fs_write가 아니라 str_replace로 파일을 고쳤다.
+const FILE_TOOLS = new Set(["fs_write", "str_replace", "fs_append"]);
+
+// 에이전트가 `npm test 2>&1 | Select-Object -Last 30`처럼 파이프로 실행하면 종료 코드는 마지막 명령의 것(0)이 된다.
+// 그래서 출력에 실패 흔적이 있으면 looks_failed로 따로 표시한다. (exit_code는 받은 그대로 둔다)
+const FAILURE_PATTERNS = [
+  /\b[1-9]\d*\s+failed\b/i, // vitest/jest: "2 failed"
+  /\bFAIL\b/, // jest/vitest 파일 단위 실패
+  /\bAssertionError\b/,
+  /\bnpm ERR!/,
+  /^\s*(×|✖)\s/m, // 실패한 테스트 표시
+  /\b(Error|Exception):\s/,
+];
+function looksFailed(output) {
+  return FAILURE_PATTERNS.some((re) => re.test(output));
+}
 
 // "Output:\n<출력>\n\nExit Code: N" 을 출력과 종료 코드로 나눈다.
 // (Exit Code가 없는 형식이면 exit_code는 null, 출력은 응답 전체)
@@ -71,14 +87,17 @@ export function convert(input) {
       const args = input.tool_input ?? {};
       if (SHELL_TOOLS.has(tool)) {
         const { exit_code, output } = parseShellResponse(input.tool_response);
-        return { type: "shell", payload: { command: String(args.command ?? ""), exit_code, output } };
+        return {
+          type: "shell",
+          payload: { command: String(args.command ?? ""), exit_code, looks_failed: exit_code !== 0 || looksFailed(output), output },
+        };
       }
       if (tool === "invoke_sub_agent") {
         const report =
           typeof input.tool_response === "string" ? input.tool_response : JSON.stringify(input.tool_response ?? "");
         return { type: "subagent", payload: { request: String(args.prompt ?? ""), report } };
       }
-      if (tool === "fs_write") {
+      if (FILE_TOOLS.has(tool)) {
         return { type: "file_change", payload: { path: String(args.path ?? "") } }; // 내용은 저장하지 않는다
       }
       return null; // task_update, read_file 등 나머지는 보내지 않는다
