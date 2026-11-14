@@ -105,5 +105,6 @@
 ## 아직 정해지지 않은 것
 
 - `cards` 스키마와 `types/card.ts` (be-2)
+- LLM 제공자, 모델, 키 이름 (PM)
 - `POST /api/sessions/close`와 `POST /api/export`의 요청·응답 형식 (be-2, fe 합의)
 - 화면 구성과 컴포넌트 (fe)
