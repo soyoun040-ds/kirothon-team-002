@@ -96,6 +96,15 @@ export async function POST(request: Request) {
   }
 
   try {
+    // 응답 종료(agent_stop)는 내용이 없는 구분용 이벤트다. 태스크 완료로 세션이 막 닫힌 직후에 오면
+    // 빈 세션이 새로 열려 "지금 정리하기"가 그 빈 세션을 닫게 되므로, 열린 세션이 없을 때는 저장하지 않는다.
+    if (type === "agent_stop") {
+      const open = await findOpenSession(source as string, project_name.trim(), session_id.trim());
+      if (!open) {
+        return NextResponse.json({ data: { skipped: true, reason: "열린 세션이 없어 저장하지 않음" } });
+      }
+    }
+
     const sessionId = await getOrCreateSession(
       source as string,
       project_name.trim(),
