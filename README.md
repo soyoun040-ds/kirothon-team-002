@@ -1,6 +1,6 @@
 # RE:Spec — 바이브코딩한 과정을 그대로 포트폴리오로
 
-Kiro로 개발하는 동안 겪은 문제와 해결 과정을 자동으로 모아 STAR 트러블슈팅 카드로 정리하고, README·이력서·자소서 초안으로 내보내는 서비스입니다. (KIROTHON 2026, 가칭)
+Kiro로 개발하는 동안 겪은 문제와 해결 과정을 자동으로 모아 STAR 트러블슈팅 카드로 정리하고, README·이력서·자소서 초안으로 내보내는 서비스입니다. (KIROTHON 2026)
 
 ## 데모 영상
 
@@ -116,6 +116,8 @@ bash <이 저장소 경로>/scripts/install.sh
 - `scripts/hooks/send-event.mjs`, `scripts/hooks/adapters/kiro/`
 - `.kiro/hooks/cv-agent.json`
 - `.cvagent/config.json` (`.gitignore`에도 추가됩니다)
+
+코드와 설정의 `cv-agent`, `.cvagent` 이름은 초기 가칭(CV 에이전트)에서 온 것입니다.
 
 설치 후 Kiro에서 다음을 합니다. 하지 않으면 hook이 실행되지 않습니다.
 
