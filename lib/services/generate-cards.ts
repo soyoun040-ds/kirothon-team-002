@@ -52,7 +52,11 @@ function describeEvent(e: EventRow): string | null {
     case "prompt":
       return `${head} 사용자 프롬프트:\n${cut(p.text)}`;
     case "shell":
-      return `${head} 셸 명령: ${cut(p.command, 300)} (exit_code: ${p.exit_code ?? "?"})\n${cutTail(p.output)}`;
+    {
+      const failed = shellFailed(e);
+      const state = failed === null ? "판단 불가" : failed ? "실패" : "성공";
+      return `${head} 셸 명령: ${cut(p.command, 300)} (exit_code: ${p.exit_code ?? "?"}, 결과: ${state})\n${cutTail(p.output)}`;
+    }
     case "task_start":
       return `${head} spec 태스크 시작: ${cut(p.task_name, 300)}`;
     case "task_complete":
@@ -70,18 +74,31 @@ function describeEvent(e: EventRow): string | null {
   }
 }
 
-// 셸이 실패(exit_code ≠ 0)한 뒤 같은 명령이 성공(0)한 짝을 찾는다. 트러블슈팅 우선 후보.
+// 셸 실패 여부. 어댑터가 붙인 looks_failed를 쓴다(파이프 실행이면 테스트가 실패해도 exit_code가 0일 수 있다).
+// looks_failed가 없는 이벤트(예전 이벤트, 다른 도구)는 exit_code로 판단한다. 판단할 수 없으면 null.
+function shellFailed(e: EventRow): boolean | null {
+  const { looks_failed, exit_code } = e.payload;
+  if (typeof looks_failed === "boolean") return looks_failed;
+  if (typeof exit_code === "number") return exit_code !== 0;
+  return null;
+}
+
+// 같은 명령인지 비교할 때 파이프 뒤(| Select-Object -Last 30 등)와 2>&1은 뺀다.
+function baseCommand(e: EventRow): string {
+  return String(e.payload.command).split("|")[0].replace(/\s*2>&1\s*/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// 셸이 실패한 뒤 같은 명령이 성공한 짝을 찾는다. 트러블슈팅 우선 후보.
 // events는 시간순이어야 한다.
 function findFailThenSuccess(events: EventRow[]): string[] {
   const shells = events.filter((e) => e.type === "shell" && typeof e.payload.command === "string");
-  const cmd = (e: EventRow) => String(e.payload.command).trim();
+  const cmd = baseCommand;
   const pairs: string[] = [];
   const used = new Set<number>();
   for (let i = 0; i < shells.length; i++) {
     const failed = shells[i];
-    const code = failed.payload.exit_code;
-    if (typeof code !== "number" || code === 0 || used.has(failed.id)) continue;
-    const fixed = shells.slice(i + 1).find((s) => s.payload.exit_code === 0 && cmd(s) === cmd(failed));
+    if (shellFailed(failed) !== true || used.has(failed.id)) continue;
+    const fixed = shells.slice(i + 1).find((s) => shellFailed(s) === false && cmd(s) === cmd(failed));
     if (!fixed) continue;
     // 같은 명령이 여러 번 실패했으면 성공 직전까지의 실패를 한 짝으로 묶는다.
     shells.slice(i, shells.indexOf(fixed)).forEach((s) => cmd(s) === cmd(failed) && used.add(s.id));
