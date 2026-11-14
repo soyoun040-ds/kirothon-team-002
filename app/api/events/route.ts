@@ -16,6 +16,7 @@ const TYPES: EventType[] = [
   "file_change",
   "commit",
   "session_end",
+  "project_info",
 ];
 
 function bad(message: string) {
@@ -96,6 +97,31 @@ export async function POST(request: Request) {
   }
 
   try {
+    // 프로젝트 설명(project_info)은 작업 기록이 아니다. 바로 닫힌 세션에 저장해서
+    // "지금 정리하기"나 카드 생성에 섞이지 않게 한다. 보고서는 가장 최근 것을 쓴다.
+    if (type === "project_info") {
+      const s = await supabase
+        .from("sessions")
+        .insert({
+          source,
+          project_name: project_name.trim(),
+          external_id: `project-info-${Date.now()}`,
+          status: "closed",
+          reason: "project_info",
+          closed_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (s.error) throw new Error(s.error.message);
+      const e = await supabase
+        .from("events")
+        .insert({ session_id: s.data.id, source, project_name: project_name.trim(), type, payload, collected_at: collectedAt })
+        .select("id")
+        .single();
+      if (e.error) throw new Error(e.error.message);
+      return NextResponse.json({ data: { id: e.data.id, session_id: s.data.id, collected_at: collectedAt } }, { status: 201 });
+    }
+
     // 응답 종료(agent_stop)는 내용이 없는 구분용 이벤트다. 태스크 완료로 세션이 막 닫힌 직후에 오면
     // 빈 세션이 새로 열려 "지금 정리하기"가 그 빈 세션을 닫게 되므로, 열린 세션이 없을 때는 저장하지 않는다.
     if (type === "agent_stop") {

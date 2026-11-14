@@ -28,6 +28,7 @@ echo "설치 대상: $TARGET"
 # 1) 공통 전송 스크립트와 kiro 어댑터 복사
 mkdir -p "$TARGET/scripts/hooks/adapters"
 cp "$SRC_ROOT/scripts/hooks/send-event.mjs" "$TARGET/scripts/hooks/send-event.mjs"
+cp "$SRC_ROOT/scripts/hooks/send-project-info.mjs" "$TARGET/scripts/hooks/send-project-info.mjs"
 rm -rf "$TARGET/scripts/hooks/adapters/kiro"
 cp -R "$SRC_ROOT/scripts/hooks/adapters/kiro" "$TARGET/scripts/hooks/adapters/kiro"
 echo "[1/4] scripts/hooks/send-event.mjs, scripts/hooks/adapters/kiro/ 복사 완료"
@@ -90,3 +91,6 @@ else
 fi
 
 echo "설치가 끝났습니다."
+
+# 프로젝트 설명(README, .kiro/steering/product.md, package.json)을 서버로 보낸다. 실패해도 설치는 끝난 것이다.
+( cd "$TARGET" && node scripts/hooks/send-project-info.mjs ) || true

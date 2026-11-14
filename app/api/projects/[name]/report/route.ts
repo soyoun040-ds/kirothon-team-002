@@ -33,10 +33,20 @@ async function buildReport(project: string) {
   ]);
   if (ev.error) throw new Error(`이벤트 조회 실패: ${ev.error.message}`);
   if (cd.error) throw new Error(`카드 조회 실패: ${cd.error.message}`);
-  const events = (ev.data ?? []) as EventRow[];
+  const all = (ev.data ?? []) as EventRow[];
   const cards = (cd.data ?? []) as CardRow[];
 
-  // 1. 프로젝트 개요: 가장 최근 태스크 완료 이벤트에 실린 spec 요구사항
+  // 1. 프로젝트 설명: 가장 최근 project_info(README, product.md, package.json 설명). 작업 기록에서는 뺀다.
+  const info = all.filter((e) => e.type === "project_info").at(-1)?.payload ?? {};
+  const events = all.filter((e) => e.type !== "project_info");
+  const description = {
+    product: str(info.product),
+    readme: str(info.readme),
+    package_name: str(info.package_name),
+    package_description: str(info.package_description),
+  };
+
+  // 이번 작업의 spec 요구사항: 가장 최근 태스크 완료 이벤트에 실린 것
   let requirements = "";
   for (const e of events) {
     const spec = (e.payload.spec ?? {}) as Record<string, unknown>;
@@ -68,7 +78,7 @@ async function buildReport(project: string) {
     project_name: project,
     period: { start: events[0]?.collected_at ?? null, end: events.at(-1)?.collected_at ?? null },
     counts: { events: events.length, prompts: prompts.length, shells, failed_shells: failedShells, files: files.size, cards: cards.length },
-    overview: { requirements: requirements.slice(0, 1500) },
+    overview: { description, requirements: requirements.slice(0, 1500) },
     my_work: { tasks: [...tasks.values()], prompts: prompts.slice(-15), files: [...files].sort() },
     troubles: cards.map((c) => ({ id: c.id, title: c.title, situation: c.situation, task: c.task })),
     solutions: cards.map((c) => ({ id: c.id, title: c.title, action: c.action, result: c.result, needs_check: c.needs_check })),
@@ -81,7 +91,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/projects/[n
   const project = decodeURIComponent(name);
   try {
     const report = await buildReport(project);
-    if (report.counts.events === 0) {
+    if (report.counts.events === 0 && !Object.values(report.overview.description).some(Boolean)) {
       return NextResponse.json({ error: `'${project}' 프로젝트의 기록이 없습니다.` }, { status: 404 });
     }
     return NextResponse.json({ data: report });
@@ -104,6 +114,11 @@ function summaryPrompt(report: Awaited<ReturnType<typeof buildReport>>) {
 ${JSON.stringify(
   {
     project: report.project_name,
+    project_description: {
+      product: report.overview.description.product.slice(0, 2000),
+      readme: report.overview.description.readme.slice(0, 2000),
+      package_description: report.overview.description.package_description,
+    },
     requirements: report.overview.requirements,
     completed_tasks: report.my_work.tasks,
     my_instructions: report.my_work.prompts.map((p) => p.text),
@@ -123,7 +138,7 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/projects/[
   const project = decodeURIComponent(name);
   try {
     const report = await buildReport(project);
-    if (report.counts.events === 0) {
+    if (report.counts.events === 0 && !Object.values(report.overview.description).some(Boolean)) {
       return NextResponse.json({ error: `'${project}' 프로젝트의 기록이 없습니다.` }, { status: 404 });
     }
     const text = await callLlm(summaryPrompt(report));

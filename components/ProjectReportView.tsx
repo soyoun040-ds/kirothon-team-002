@@ -9,7 +9,10 @@ type Report = {
   project_name: string;
   period: { start: string | null; end: string | null };
   counts: { events: number; prompts: number; shells: number; failed_shells: number; files: number; cards: number };
-  overview: { requirements: string };
+  overview: {
+    description: { product: string; readme: string; package_name: string; package_description: string };
+    requirements: string;
+  };
   my_work: { tasks: { name: string; success: boolean; at: string }[]; prompts: { text: string; at: string }[]; files: string[] };
   troubles: { id: string; title: string; situation: string; task: string }[];
   solutions: { id: string; title: string; action: string; result: string; needs_check: string[] }[];
@@ -105,15 +108,33 @@ export default function ProjectReportView({ name }: { name: string }) {
 
       <Section no={1} title="이 프로젝트는">
         <AiText text={summary?.overview} />
-        {report.overview.requirements ? (
-          <pre className="whitespace-pre-wrap rounded border border-zinc-200 bg-zinc-50 p-3 font-sans text-xs text-zinc-700">
-            {report.overview.requirements}
-          </pre>
-        ) : (
-          <p className="text-zinc-500">
-            아직 spec 태스크 기록이 없습니다. 이 저장소에서 Kiro spec 태스크를 실행하면 요구사항이 자동으로 채워집니다.
-            지금까지의 기록으로 개요를 보려면 위의 &quot;AI로 문장 다듬기&quot;를 누르세요.
-          </p>
+        {(() => {
+          const d = report.overview.description ?? { product: "", readme: "", package_name: "", package_description: "" };
+          const text = d.product || d.readme;
+          if (!text && !d.package_description) {
+            return (
+              <p className="text-zinc-500">
+                프로젝트 설명이 아직 없습니다. 이 저장소에서 install.sh를 실행하거나
+                node scripts/hooks/send-project-info.mjs 를 실행하면 README와 제품 설명이 채워집니다.
+              </p>
+            );
+          }
+          return (
+            <>
+              {d.package_description && <p className="font-medium">{d.package_description}</p>}
+              {text && (
+                <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded border border-zinc-200 bg-zinc-50 p-3 font-sans text-xs text-zinc-700 print:max-h-none">
+                  {text}
+                </pre>
+              )}
+            </>
+          );
+        })()}
+        {report.overview.requirements && (
+          <details className="rounded border border-zinc-200 p-3">
+            <summary className="cursor-pointer font-medium">이번 작업의 spec 요구사항</summary>
+            <pre className="mt-2 whitespace-pre-wrap font-sans text-xs text-zinc-700">{report.overview.requirements}</pre>
+          </details>
         )}
       </Section>
 
