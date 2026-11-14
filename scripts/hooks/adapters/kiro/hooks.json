@@ -1,0 +1,41 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "cv-agent-prompt",
+      "description": "프롬프트 입력을 CV 에이전트로 전송",
+      "trigger": "UserPromptSubmit",
+      "action": { "type": "command", "command": "node scripts/hooks/adapters/kiro/adapter.mjs" },
+      "timeout": 10
+    },
+    {
+      "name": "cv-agent-tool",
+      "description": "셸 실행, 서브에이전트, 파일 변경을 CV 에이전트로 전송",
+      "trigger": "PostToolUse",
+      "matcher": "execute_pwsh|execute_bash|invoke_sub_agent|fs_write",
+      "action": { "type": "command", "command": "node scripts/hooks/adapters/kiro/adapter.mjs" },
+      "timeout": 10
+    },
+    {
+      "name": "cv-agent-task-start",
+      "description": "spec 태스크 시작을 CV 에이전트로 전송",
+      "trigger": "PreTaskExec",
+      "action": { "type": "command", "command": "node scripts/hooks/adapters/kiro/adapter.mjs" },
+      "timeout": 10
+    },
+    {
+      "name": "cv-agent-task-complete",
+      "description": "spec 태스크 완료를 CV 에이전트로 전송",
+      "trigger": "PostTaskExec",
+      "action": { "type": "command", "command": "node scripts/hooks/adapters/kiro/adapter.mjs" },
+      "timeout": 10
+    },
+    {
+      "name": "cv-agent-stop",
+      "description": "에이전트 응답 종료를 CV 에이전트로 전송",
+      "trigger": "Stop",
+      "action": { "type": "command", "command": "node scripts/hooks/adapters/kiro/adapter.mjs" },
+      "timeout": 10
+    }
+  ]
+}

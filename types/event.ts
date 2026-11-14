@@ -28,7 +28,7 @@ export type CvEvent = {
 // prompt:        { text }
 // shell:         { command, exit_code, output }
 // task_start:    { spec_path, task_name }
-// task_complete: { task_id, task_title, task_success, spec_path, spec: { requirements, description } }  (task_success: boolean, 성공/실패 구분)
+// task_complete: { task_name, task_success, spec_path, spec: { requirements, description } }  (task_success: boolean, 성공/실패 구분)
 // subagent:      { request, report }
 // file_change:   { path }
 // agent_stop:    { summary? }
