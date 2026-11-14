@@ -1,0 +1,14 @@
+{
+  "name": "demo-schedule",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hackathon demo repo: a small schedule utility with an intentional timezone bug",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
