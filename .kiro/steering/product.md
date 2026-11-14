@@ -7,6 +7,7 @@ inclusion: always
 ## 해커톤 조건
 
 - KIROTHON 2026, 2026.11.14(토) 10:00–20:50, 4인 팀
+- 일정: 17:00 기능 동결, 17:40 제출 시작, 18:00 마감. (`.kiro/specs/mvp/requirements.md` 기준)
 - 목표: 심사 때 **끝까지 동작하는 데모**를 보여 주는 것. 기능 수보다 완성도 우선.
 
 ## 주제
@@ -35,7 +36,8 @@ Kiro 같은 AI 코딩 도구로 바이브코딩하는 대학생을 위해, 개�
 
 1. **작업 로그 자동 수집**
    - Kiro hook이 프롬프트 입력, 셸 실행 결과(에러 포함), spec 태스크 완료, 에이전트 응답 종료 시점에 셸 명령으로 이벤트를 서버에 전송한다. 이 단계에서는 에러와 해결을 짝짓지 않는다.
-   - Git 커밋이 생기면(Kiro 외부 git post-commit hook) diff와 커밋 메시지를 DB에 저장한다.
+   - (후순위) Git 커밋이 생기면(Kiro 외부 git post-commit hook) diff와 커밋 메시지를 DB에 저장한다.
+   - 이벤트 출처(source)는 kiro, claude-code, cursor 외에 git(post-commit, 후순위)도 있다. git은 어느 AI 도구에서 왔는지 알 수 없어 별도 출처로 둔다.
    - Kiro hook은 "과정", Git 커밋은 "결과의 근거"를 담당한다.
    - 도구별 어댑터 구조: 모든 이벤트에 출처(source: kiro, claude-code, cursor)를 붙이고, POST /events를 도구와 무관한 공통 입구로 둔다. 도구별 연결은 어댑터(scripts/hooks/adapters/<도구이름>/)로 분리한다. 이번 범위에서 구현하는 어댑터: kiro(필수), claude-code, cursor.
      - claude-code와 cursor 어댑터는 kiro 흐름(수집 → 카드 → 내보내기)이 끝까지 동작한 뒤에 구현한다.
@@ -61,7 +63,7 @@ Kiro 같은 AI 코딩 도구로 바이브코딩하는 대학생을 위해, 개�
 ## 제품 원칙
 
 - 사용자가 따로 기록하지 않아도 된다. (자동 수집 우선)
-- 거짓 이력을 만들지 않는다. 모든 카드는 원본 로그와 diff를 근거로 연결한다.
+- 거짓 이력을 만들지 않는다. 모든 카드는 원본 로그를 근거로 연결한다. git diff는 수집되면 함께 쓴다 (post-commit은 후순위).
 - 사용자가 최종 확인하고 수정한다. AI는 초안만 만든다.
 - 수집 데이터의 API 키, 토큰, .env 내용은 서버로 보내기 전에 마스킹한다.
 

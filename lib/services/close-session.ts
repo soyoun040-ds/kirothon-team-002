@@ -74,6 +74,24 @@ export async function closeSession(sessionId: string, reason: CloseReason): Prom
   }
 }
 
+// 도구가 준 세션 ID(external_id)로 열린 세션을 찾는다. 태스크 완료, 세션 종료 hook용.
+export async function findOpenSessionId(
+  source: string,
+  projectName: string,
+  externalId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("id")
+    .eq("source", source)
+    .eq("project_name", projectName)
+    .eq("external_id", externalId)
+    .eq("status", "open")
+    .maybeSingle();
+  if (error) throw new Error(`열린 세션 조회 실패: ${error.message}`);
+  return (data?.id as string | undefined) ?? null;
+}
+
 // "지금 정리하기" 버튼용: 가장 최근에 열린 세션을 닫는다. projectName을 주면 그 프로젝트에서만 찾는다.
 export async function closeLatestOpenSession(projectName?: string): Promise<CloseResult | null> {
   let query = supabase

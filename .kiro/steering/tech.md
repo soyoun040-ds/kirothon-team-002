@@ -16,7 +16,7 @@ inclusion: always
 | 서버 로직 | Next.js Route Handlers (`app/api/**/route.ts`) |
 | DB | Supabase (Postgres), `@supabase/supabase-js`. 로그인(Auth)은 사용하지 않는다. |
 | 수집 어댑터 | Node `.mjs` 스크립트, 외부 패키지 없이 작성. 위치는 `scripts/hooks/adapters/<도구이름>/` |
-| LLM | 미정. 정해지기 전에는 임의로 고르지 말고 사용자에게 물을 것. |
+| LLM | 기본: Kiro CLI headless (`kiro-cli chat --no-interactive`, 프롬프트는 표준입력). 서버를 돌리는 PC에 kiro-cli 설치·로그인이 필요하다. 로컬 데모 전용. 대비책: Google Gemini Flash 무료 등급. `LLM_PROVIDER=kiro \| gemini`로 고른다. |
 | 배포 | Vercel |
 | 패키지 매니저 | npm |
 
@@ -28,6 +28,8 @@ inclusion: always
 - 환경 변수는 `.env.local`에 둔다.
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `LLM_PROVIDER` (`kiro` 또는 `gemini`), `GEMINI_API_KEY` (gemini일 때만)
+- 이벤트 형식은 `types/event.ts`가 기준이다.
 - 외부 AI API를 쓸 경우 키는 서버 코드(`app/api/`)에서만 사용하고 브라우저로 노출하지 않는다.
 - 라우트 파일에 `export const dynamic = ...`를 쓰지 않는다. 이 Next.js 버전은 `cacheComponents`와 맞지 않아 오류가 난다.
 

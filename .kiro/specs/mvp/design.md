@@ -70,6 +70,19 @@
 - RLS는 데모 한정으로 껐다. 데모 후 서버 전용 키로 바꾸고 RLS를 다시 켠다.
 - 카드 형식(`types/card.ts`)과 `cards` 스키마는 be-2가 먼저 push하고, fe가 그 모양에 맞춘다.
 
+## LLM 호출
+
+- 호출은 `lib/services/generate-cards.ts` 안의 `callLLM(prompt)` 함수 하나로 감싼다. 새 파일이나 서비스 함수는 만들지 않는다. (`lib/services/` 함수 2개 원칙 유지)
+- 제공자는 환경변수 `LLM_PROVIDER`로 고른다.
+
+| `LLM_PROVIDER` | 방식 | 비고 |
+|---|---|---|
+| `kiro` (기본) | `kiro-cli chat --no-interactive`를 실행하고 프롬프트를 표준입력으로 넘긴다 | 서버를 돌리는 PC에 kiro-cli 설치·로그인 필요. 로컬 데모 전용 (Vercel 배포에서는 쓸 수 없다) |
+| `gemini` (대비책) | Google Gemini Flash 무료 등급 API | `GEMINI_API_KEY` 필요 |
+
+- Kiro 출력에는 설명이 섞일 수 있으므로, 응답에서 JSON 부분만 추출해 검증한다. 추출하거나 검증하지 못하면 "LLM 호출 실패 또는 JSON이 아닌 응답"으로 처리한다. (아래 오류 처리)
+- 키는 서버 코드에서만 읽고 브라우저로 내보내지 않는다.
+
 ## 오류 처리
 
 | 상황 | 처리 |
