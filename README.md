@@ -4,7 +4,7 @@ Kiro로 개발하는 동안 겪은 문제와 해결 과정을 자동으로 모�
 
 ## 데모 영상
 
-[영상 링크 자리]
+▶ [데모 영상 보기](https://drive.google.com/drive/folders/1sMlj6-yLKF_F_FREaTKMcQsgD09IOkKl?usp=drive_link)
 
 ## 문제
 
