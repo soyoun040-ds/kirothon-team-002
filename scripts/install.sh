@@ -49,8 +49,18 @@ else
   PROJECT_NAME=""
   read -r -p "서버 주소 [$DEFAULT_SERVER]: " SERVER_URL || true
   read -r -p "프로젝트 이름 [$DEFAULT_NAME]: " PROJECT_NAME || true
+  # 방향키 같은 제어 문자([C, [D 등)가 섞여 들어오면 제거한다.
+  SERVER_URL="$(printf '%s' "$SERVER_URL" | sed $'s/\x1b\\[[0-9;]*[A-Za-z]//g; s/\\[[A-D]//g' | tr -d '[:cntrl:]' | tr -d ' ')"
+  PROJECT_NAME="$(printf '%s' "$PROJECT_NAME" | sed $'s/\x1b\\[[0-9;]*[A-Za-z]//g; s/\\[[A-D]//g' | tr -d '[:cntrl:]')"
   SERVER_URL="${SERVER_URL:-$DEFAULT_SERVER}"
   PROJECT_NAME="${PROJECT_NAME:-$DEFAULT_NAME}"
+  case "$SERVER_URL" in
+    http://*|https://*) ;;
+    *)
+      echo "경고: 서버 주소 '$SERVER_URL' 가 http:// 또는 https:// 로 시작하지 않아 기본값($DEFAULT_SERVER)을 씁니다."
+      SERVER_URL="$DEFAULT_SERVER"
+      ;;
+  esac
 
   # JSON 문자열로 안전하게 쓰기 위해 \ 와 " 를 이스케이프한다.
   json_escape() {

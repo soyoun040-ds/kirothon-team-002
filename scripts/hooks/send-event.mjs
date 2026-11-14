@@ -117,7 +117,9 @@ function readConfig(cwd) {
 export async function sendEvent(event, cwd = process.cwd()) {
   try {
     const config = readConfig(cwd);
-    const server = String(config.server_url || DEFAULT_SERVER).replace(/\/+$/, "");
+    // 설정의 주소가 http(s)로 시작하지 않으면(예: 설치 때 방향키 입력이 섞인 경우) 기본값을 쓴다.
+    const configured = String(config.server_url || "").trim();
+    const server = (/^https?:\/\/\S+$/.test(configured) ? configured : DEFAULT_SERVER).replace(/\/+$/, "");
     const payload = maskDeep(event.payload ?? {});
     const body = {
       source: event.source,
