@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { supabase } from "@/lib/supabase";
+// 마스킹 규칙은 be-1의 공통 전송 스크립트와 같은 것을 쓴다(규칙을 복사하지 않는다).
+import { maskText } from "@/scripts/hooks/send-event.mjs";
 import type { EventRow, SessionRow } from "@/types/event";
 
 // 카드 생성: 세션의 이벤트(프롬프트, 셸 결과, spec, diff)를 한 번에 LLM에 보내
@@ -36,6 +38,12 @@ function cut(value: unknown, max = MAX_TEXT): string {
   return text.length > max ? `${text.slice(0, max)}…(생략)` : text;
 }
 
+// 셸 출력용: 에러 요약은 보통 끝에 나오므로 끝부분을 남긴다.
+function cutTail(value: unknown, max = MAX_TEXT): string {
+  const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
+  return text.length > max ? `(앞부분 생략)…${text.slice(-max)}` : text;
+}
+
 // 이벤트 하나를 LLM이 읽기 쉬운 한 덩어리 글로 바꾼다. 카드 근거와 무관한 이벤트는 null.
 function describeEvent(e: EventRow): string | null {
   const p = e.payload;
@@ -44,7 +52,7 @@ function describeEvent(e: EventRow): string | null {
     case "prompt":
       return `${head} 사용자 프롬프트:\n${cut(p.text)}`;
     case "shell":
-      return `${head} 셸 명령: ${cut(p.command, 300)} (exit_code: ${p.exit_code ?? "?"})\n${cut(p.output)}`;
+      return `${head} 셸 명령: ${cut(p.command, 300)} (exit_code: ${p.exit_code ?? "?"})\n${cutTail(p.output)}`;
     case "task_start":
       return `${head} spec 태스크 시작: ${cut(p.task_name, 300)}`;
     case "task_complete":
@@ -62,15 +70,39 @@ function describeEvent(e: EventRow): string | null {
   }
 }
 
+// 셸이 실패(exit_code ≠ 0)한 뒤 같은 명령이 성공(0)한 짝을 찾는다. 트러블슈팅 우선 후보.
+// events는 시간순이어야 한다.
+function findFailThenSuccess(events: EventRow[]): string[] {
+  const shells = events.filter((e) => e.type === "shell" && typeof e.payload.command === "string");
+  const cmd = (e: EventRow) => String(e.payload.command).trim();
+  const pairs: string[] = [];
+  const used = new Set<number>();
+  for (let i = 0; i < shells.length; i++) {
+    const failed = shells[i];
+    const code = failed.payload.exit_code;
+    if (typeof code !== "number" || code === 0 || used.has(failed.id)) continue;
+    const fixed = shells.slice(i + 1).find((s) => s.payload.exit_code === 0 && cmd(s) === cmd(failed));
+    if (!fixed) continue;
+    // 같은 명령이 여러 번 실패했으면 성공 직전까지의 실패를 한 짝으로 묶는다.
+    shells.slice(i, shells.indexOf(fixed)).forEach((s) => cmd(s) === cmd(failed) && used.add(s.id));
+    pairs.push(`- #${failed.id} 실패 → #${fixed.id} 성공 (명령: ${cut(cmd(failed), 200)})`);
+  }
+  return pairs;
+}
+
 function buildPrompt(events: EventRow[]): string {
   const lines = events.map(describeEvent).filter((v): v is string => v !== null);
   let log = lines.join("\n\n");
   if (log.length > MAX_PROMPT) log = `…(앞부분 생략)\n${log.slice(-MAX_PROMPT)}`;
+  const pairs = findFailThenSuccess(events);
+  const candidates = pairs.length > 0 ? `\n우선 후보(셸 실패 → 같은 명령 성공):\n${pairs.join("\n")}\n` : "";
 
   return `너는 대학생 개발자의 작업 로그에서 포트폴리오용 트러블슈팅을 찾는 도우미다.
 아래 로그에서 "문제 발생 → 원인 파악 → 해결"이 드러난 트러블슈팅을 최대 ${MAX_CARDS}개 찾아 STAR 카드로 만든다.
 
 규칙:
+- 셸 명령이 실패했다가 수정 후 성공한 흐름을 가장 먼저 트러블슈팅으로 본다. 아래 "우선 후보"가 있으면 먼저 검토한다.
+- 사용자 프롬프트가 없어도 셸 결과(실패 메시지와 성공), 변경한 파일, spec 내용만으로 카드를 만들 수 있다.
 - 로그에 근거가 있는 내용만 쓴다. 지어내지 않는다.
 - 근거가 없는 칸, 특히 수치와 결과는 정확히 "${NEEDS_CHECK}"라고만 쓰고 needs_check에 그 칸 이름을 넣는다.
 - 오타, import 누락, 단순 설정 변경 같은 사소한 수정은 카드로 만들지 않는다.
@@ -80,7 +112,7 @@ function buildPrompt(events: EventRow[]): string {
 
 JSON만 출력한다. 형식:
 {"cards":[{"title":"","situation":"","task":"","action":"","result":"","needs_check":["result"],"evidence_event_ids":[1,2]}]}
-
+${candidates}
 로그:
 ${log}`;
 }
@@ -97,7 +129,8 @@ export function callLlm(prompt: string): Promise<string> {
   const args = ["chat", "--no-interactive", "--trust-tools=", "--model", model];
 
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, { cwd: tmpdir(), windowsHide: true });
+    // turbopackIgnore: 외부 실행 파일이므로 프로젝트 파일을 배포 묶음에 넣지 않게 한다.
+    const child = spawn(/*turbopackIgnore: true*/ bin, args, { cwd: tmpdir(), windowsHide: true });
     let stdout = "";
     let stderr = "";
     let done = false;
@@ -129,7 +162,8 @@ export function callLlm(prompt: string): Promise<string> {
 
     // stdin이 먼저 닫혀도(EPIPE) 서버가 죽지 않게 한다. 결과는 close에서 판단한다.
     child.stdin.on("error", () => {});
-    child.stdin.end(prompt, "utf8");
+    // LLM에 보내기 직전에 수집 때와 같은 규칙으로 한 번 더 마스킹한다(requirements 3.8).
+    child.stdin.end(maskText(prompt), "utf8");
   });
 }
 
