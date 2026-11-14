@@ -59,8 +59,8 @@ export default function CardsPage() {
     <main className="mx-auto max-w-3xl p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">트러블슈팅 카드</h1>
-        <a href="/projects" className="ml-auto mr-3 text-sm text-violet-700 underline-offset-2 hover:underline">
-          프로젝트 보고서 →
+        <a href="/" className="ml-auto mr-3 text-sm text-violet-700 underline-offset-2 hover:underline">
+          ← 내 프로젝트
         </a>
         <button
           onClick={closeNow}

@@ -6,7 +6,7 @@ import CardDetailView from "@/components/CardDetailView";
 export default function CardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <Link href="/" className="text-sm text-zinc-500">← 목록으로</Link>
+      <Link href="/cards" className="text-sm text-zinc-500">← 카드 목록으로</Link>
       <Suspense fallback={<p className="mt-6 text-zinc-500">불러오는 중...</p>}>
         <CardDetail params={params} />
       </Suspense>

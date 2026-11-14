@@ -6,7 +6,7 @@ import ProjectReportView from "@/components/ProjectReportView";
 export default function ProjectReportPage({ params }: { params: Promise<{ name: string }> }) {
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <Link href="/projects" className="text-sm text-zinc-500 print:hidden">← 프로젝트 목록으로</Link>
+      <Link href="/" className="text-sm text-zinc-500 print:hidden">← 내 프로젝트 목록으로</Link>
       <Suspense fallback={<p className="mt-6 text-zinc-500">불러오는 중...</p>}>
         <ProjectReport params={params} />
       </Suspense>
