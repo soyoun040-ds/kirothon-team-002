@@ -94,7 +94,7 @@ Python 라이브러리가 꼭 필요하면 서버 로직만 FastAPI(Python)로 �
 ## 데모 카드 백업과 복원
 
 - 데모에 쓰는 카드는 리허설에서 데모 시나리오를 실제 파이프라인으로 실행해 생성된 것만 쓴다. 손으로 만든 카드는 쓰지 않는다.
-- `scripts/export-demo-cards.mjs`: 생성된 카드를 `seed/demo-cards.json`으로 내보낸다.
-- `scripts/restore-demo-cards.mjs`: `seed/demo-cards.json`을 DB에 다시 넣는다. 이미 있는 카드는 중복으로 넣지 않는다.
+- `seed/export-demo-cards.mjs`: 생성된 카드를 `seed/demo-cards.json`으로 내보낸다.
+- `seed/restore-demo-cards.mjs`: `seed/demo-cards.json`을 DB에 다시 넣는다. 이미 있는 카드는 중복으로 넣지 않는다.
 - 두 스크립트는 `app/api/demo-cards/route.ts`(GET 내보내기, POST 복원)를 호출한다. Supabase 클라이언트는 `lib/supabase.ts` 하나만 쓴다.
 - `lib/mock-data.ts`는 프론트 개발용으로만 유지한다. 데모 화면에서는 쓰지 않고, API 오류가 나도 mock-data로 대체하지 않는다. 오류를 그대로 화면에 표시한다.
